@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Isle Tracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e17;
+    color: #7fdbca;
+    font-family: 'Consolas', 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ── Lobby ── */
+  #lobby {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+  .lobby-card {
+    background: #0d1520;
+    border: 1px solid #1a3a4a;
+    border-radius: 8px;
+    padding: 40px;
+    width: 420px;
+    text-align: center;
+  }
+  .lobby-card h1 {
+    font-size: 18px;
+    color: #5ccfe6;
+    letter-spacing: 3px;
+    margin-bottom: 4px;
+  }
+  .lobby-card .subtitle {
+    font-size: 12px;
+    color: #7fdbca;
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+    opacity: 0.7;
+  }
+  .lobby-card input {
+    background: #132030;
+    border: 1px solid #1a3a4a;
+    color: #7fdbca;
+    padding: 10px 14px;
+    width: 100%;
+    margin-bottom: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .lobby-card input:focus { outline: none; border-color: #5ccfe6; }
+  .lobby-card input::placeholder { color: #334; }
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .btn {
+    flex: 1;
+    background: #1a3a5a;
+    color: #5ccfe6;
+    border: 1px solid #2a5a8a;
+    padding: 12px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #2a4a6a; }
+  .btn-danger {
+    background: #3a1a1a;
+    border-color: #6a2a2a;
+    color: #e06c75;
+  }
+  .btn-danger:hover { background: #4a2a2a; }
+  #join-section {
+    display: none;
+    margin-top: 12px;
+  }
+  #join-section input {
+    text-transform: uppercase;
+    font-size: 20px;
+    letter-spacing: 6px;
+    font-weight: bold;
+  }
+  #lobby-error {
+    color: #e06c75;
+    font-size: 12px;
+    margin-top: 12px;
+    min-height: 18px;
+  }
+
+  /* ── Tracker ── */
+  #tracker { display: none; height: 100vh; flex-direction: column; }
+  #tracker.active { display: flex; }
+  #lobby.hidden { display: none; }
+
+  #header {
+    background: #0d1520;
+    border-bottom: 1px solid #1a3a4a;
+    padding: 8px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 42px;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  #header h1 {
+    font-size: 14px;
+    color: #5ccfe6;
+    letter-spacing: 2px;
+  }
+  .room-badge {
+    background: #132030;
+    border: 1px solid #1a3a4a;
+    padding: 3px 10px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #f0c674;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .room-badge:hover { border-color: #f0c674; }
+  .room-badge .copy-hint {
+    font-size: 9px;
+    color: #556;
+    letter-spacing: 0;
+    margin-left: 6px;
+  }
+  #status {
+    font-size: 12px;
+    color: #f0c674;
+  }
+  #connection-status {
+    font-size: 11px;
+    color: #e06c75;
+    margin-left: 8px;
+  }
+
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+  #map-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  #canvas {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  #canvas:active { cursor: grabbing; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 280px;
+    background: #0d1520;
+    border-left: 1px solid #1a3a4a;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .panel {
+    border: 1px solid #1a3a4a;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .panel-title {
+    background: #132030;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #5ccfe6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-body {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  /* Player list */
+  .player-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 12px;
+  }
+  .player-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .player-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .player-coords {
+    color: #445;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .player-stale { opacity: 0.4; }
+
+  /* Coord display */
+  .coord-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .coord-label { color: #555; }
+  .coord-value { color: #7fdbca; font-weight: bold; }
+
+  /* OCR dot */
+  .ocr-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+    background: #555;
+  }
+  .ocr-dot.active { background: #5ccfe6; box-shadow: 0 0 6px #5ccfe6; }
+  .ocr-dot.stale { background: #f0c674; }
+  .ocr-dot.offline { background: #555; }
+
+
+  .sidebar-btn {
+    background: #1a3a5a;
+    color: #5ccfe6;
+    border: 1px solid #2a5a8a;
+    padding: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    border-radius: 4px;
+    width: 100%;
+    text-align: center;
+    transition: background 0.15s;
+  }
+  .sidebar-btn:hover { background: #2a4a6a; }
+  .sidebar-btn.active-capture {
+    background: #1a3a2a;
+    border-color: #2a6a3a;
+    color: #98c379;
+  }
+
+  #leave-btn {
+    margin-top: auto;
+  }
+
+  .detecting {
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Region Selection Overlay ── */
+  #region-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    cursor: crosshair;
+  }
+  #region-canvas {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Lobby View ── -->
+<div id="lobby">
+  <div class="lobby-card">
+    <h1>LIVE ISLE TRACKER</h1>
+    <div class="subtitle">FIND YOUR FRIENDS IN-GAME</div>
+    <input type="text" id="player-name" maxlength="16" placeholder="Your name" autofocus>
+    <div class="btn-row">
+      <button class="btn" id="create-btn" onclick="createRoom()">CREATE ROOM</button>
+      <button class="btn" id="show-join-btn" onclick="showJoinInput()">JOIN ROOM</button>
+    </div>
+    <div id="join-section">
+      <input type="text" id="room-code-input" maxlength="6" placeholder="CODE">
+      <button class="btn" style="margin-top:8px" onclick="joinRoom()">JOIN</button>
+    </div>
+    <div id="lobby-error"></div>
+    <div style="margin-top:20px">
+      <div style="color:#556;font-size:11px;cursor:pointer;user-select:none" onclick="document.getElementById('howto').style.display = document.getElementById('howto').style.display === 'none' ? 'block' : 'none'">
+        HOW IT WORKS &#9662;
+      </div>
+      <div id="howto" style="display:none;text-align:left;margin-top:10px;font-size:11px;color:#556;line-height:1.8">
+        1. Enter your name and <span style="color:#5ccfe6">Create</span> or <span style="color:#5ccfe6">Join</span> a room<br>
+        2. Share the 6-letter room code with your friends<br>
+        3. Click <span style="color:#5ccfe6">Share Screen</span> and select your game window<br>
+        4. Draw a rectangle around the <span style="color:#f0c674">Asset Location</span> box<br>
+        5. Press <span style="color:#f0c674">Tab</span> in-game to sync your position to the map<br>
+        <span style="color:#445;font-size:10px">Works in Chrome &amp; Edge. No installs needed.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Tracker View ── -->
+<div id="tracker">
+  <div id="header">
+    <div class="header-left">
+      <h1>LIVE ISLE TRACKER</h1>
+      <div class="room-badge" id="room-badge" onclick="copyRoomCode()" title="Click to copy">
+        <span id="room-code-display">------</span>
+        <span class="copy-hint">copy</span>
+      </div>
+      <span id="hide-code-btn" onclick="toggleCodeVisibility(event)" title="Hide/show room code" style="cursor:pointer;font-size:14px;color:#556;margin-left:4px">&#128065;</span>
+    </div>
+    <div>
+      <span id="status">Connecting...</span>
+      <span id="connection-status"></span>
+    </div>
+  </div>
+  <div id="main">
+    <div id="map-container">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div id="sidebar">
+      <!-- Room panel -->
+      <div class="panel">
+        <div class="panel-title">
+          <span>Players</span>
+          <span id="player-count" style="color:#f0c674">0/8</span>
+        </div>
+        <div class="panel-body" id="player-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Your location -->
+      <div class="panel">
+        <div class="panel-title">
+          <span>Your Location</span>
+          <span id="ocr-dot" class="ocr-dot offline"></span>
+        </div>
+        <div class="panel-body">
+          <div class="coord-row">
+            <span class="coord-label">Lat:</span>
+            <span class="coord-value" id="lat-val">---</span>
+          </div>
+          <div class="coord-row">
+            <span class="coord-label">Long:</span>
+            <span class="coord-value" id="long-val">---</span>
+          </div>
+          <div class="coord-row">
+            <span class="coord-label">Alt:</span>
+            <span class="coord-value" id="alt-val">---</span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Screen capture button -->
+      <button class="sidebar-btn" id="capture-btn" onclick="beginCapture()">
+        SHARE SCREEN
+      </button>
+      <div style="font-size:10px;color:#445;line-height:1.6;padding:4px 2px">
+        1. Click Share Screen &amp; select your game window<br>
+        2. Draw a box around the <span style="color:#f0c674">Asset Location</span> area<br>
+        3. Press <span style="color:#f0c674">Tab</span> in-game to sync your position
+      </div>
+
+      <!-- Overlay toggles -->
+      <div class="panel">
+        <div class="panel-title">Map Overlays</div>
+        <div class="panel-body" style="display:flex;gap:8px">
+          <button class="sidebar-btn" id="toggle-migration" onclick="toggleMigration()" style="flex:1;padding:6px;font-size:11px">
+            MIGRATION
+          </button>
+          <button class="sidebar-btn" id="toggle-sanctuaries" onclick="toggleSanctuaries()" style="flex:1;padding:6px;font-size:11px">
+            SANCTUARIES
+          </button>
+          <button class="sidebar-btn" id="toggle-salt" onclick="toggleSalt()" style="flex:1;padding:6px;font-size:11px">
+            SALT
+          </button>
+        </div>
+      </div>
+
+      <!-- Leave -->
+      <button class="sidebar-btn btn-danger" id="leave-btn" onclick="leaveRoom()">
+        LEAVE ROOM
+      </button>
+
+      <!-- Ad placeholder (hidden until AdSense approved) -->
+      <div id="ad-slot" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Region Selection Overlay ── -->
+<div id="region-overlay">
+  <canvas id="region-canvas"></canvas>
+</div>
+
+<!-- ── CDN Dependencies ── -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<!-- ── App Scripts ── -->
+<script src="ocr.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
