@@ -6,7 +6,7 @@
 // ── Server Config ──
 // For local dev: 'ws://localhost:3000'
 // For production: 'wss://your-app.fly.dev'
-const WS_URL = 'ws://localhost:3000';
+const WS_URL = 'wss://live-isle-tracker.fly.dev';
 
 // ── Constants ──
 const MAX_PLAYERS = 8;
