@@ -13,6 +13,7 @@ let ocrWorker = null;
 let ocrRunning = false;
 let lastCoords = null;
 let ocrLastSuccess = 0;
+let consecutiveRejects = 0;
 
 // ── Regex (matches server.py patterns) ──
 const LAT_RE = /Lat[:\s]*(-?[\d,]+\.?\d*)/;
@@ -287,10 +288,22 @@ async function ocrLoop() {
       }
 
       if (valid) {
+        consecutiveRejects = 0;
         lastCoords = coords;
         ocrLastSuccess = Date.now();
         updateMyPosition(coords.lat, coords.long, coords.alt);
         updateOCRStatus('active');
+      } else {
+        consecutiveRejects++;
+        // After 5 consecutive rejects (~1s at 5Hz), assume legitimate teleport (death/respawn)
+        if (consecutiveRejects >= 5) {
+          consecutiveRejects = 0;
+          clearMyTrail();
+          lastCoords = coords;
+          ocrLastSuccess = Date.now();
+          updateMyPosition(coords.lat, coords.long, coords.alt);
+          updateOCRStatus('active');
+        }
       }
     }
   } catch (err) {

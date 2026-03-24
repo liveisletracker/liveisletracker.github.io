@@ -264,6 +264,26 @@
   .ocr-dot.stale { background: #f0c674; }
   .ocr-dot.offline { background: #555; }
 
+  /* Live indicator dot */
+  .live-badge {
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+  .live-badge-dot {
+    width: 8px;
+    height: 8px;
+    background: #cc0000;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 6px #cc0000;
+    animation: live-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes live-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px #cc0000; }
+    50% { opacity: 0.4; box-shadow: 0 0 2px #cc0000; }
+  }
+
 
   .sidebar-btn {
     background: #1a3a5a;
@@ -317,7 +337,7 @@
 <!-- ── Lobby View ── -->
 <div id="lobby">
   <div class="lobby-card">
-    <h1>LIVE ISLE TRACKER</h1>
+    <h1>LIVE ISLE TRACKER <span class="live-badge"><span class="live-badge-dot"></span></span></h1>
     <div class="subtitle">FIND YOUR FRIENDS IN-GAME</div>
     <img src="main.png" alt="Live Isle Tracker demo" style="width:100%;border-radius:6px;margin:15px 0;border:1px solid #1a3a4a;opacity:0.9">
     <input type="text" id="player-name" maxlength="16" placeholder="Your name" autofocus>
@@ -352,7 +372,7 @@
 <div id="tracker">
   <div id="header">
     <div class="header-left">
-      <h1>LIVE ISLE TRACKER</h1>
+      <h1>LIVE ISLE TRACKER <span class="live-badge"><span class="live-badge-dot"></span></span></h1>
       <div class="room-badge" id="room-badge" onclick="copyRoomCode()" title="Click to copy">
         <span id="room-code-display">------</span>
         <span class="copy-hint">copy</span>
@@ -405,13 +425,22 @@
 
       <!-- Screen capture button -->
       <button class="sidebar-btn" id="capture-btn" onclick="beginCapture()">
-        SHARE SCREEN
+        SHARE SCREEN <span class="live-badge"><span class="live-badge-dot"></span></span>
       </button>
       <div style="font-size:10px;color:#445;line-height:1.6;padding:4px 2px">
         1. Click Share Screen &amp; select your game window<br>
         2. Draw a box around the <span style="color:#f0c674">Asset Location</span> area<br>
         3. Press <span style="color:#f0c674">Tab</span> in-game to sync your position<br>
         4. <span style="color:#5ccfe6">Right-click</span> on the map to set a waypoint for friends
+      </div>
+
+      <!-- Manual coordinates input -->
+      <div class="panel">
+        <div class="panel-title">Manual Coordinates</div>
+        <div class="panel-body">
+          <input type="text" id="manual-coords" placeholder="-258,483.891, 87,952.752, 28,013.089" style="background:#132030;border:1px solid #1a3a4a;color:#7fdbca;padding:6px 8px;width:100%;font-family:inherit;font-size:11px;border-radius:3px;margin-bottom:6px">
+          <button class="sidebar-btn" onclick="applyManualCoords()" style="padding:6px;font-size:11px">APPLY</button>
+        </div>
       </div>
 
       <!-- Overlay toggles -->

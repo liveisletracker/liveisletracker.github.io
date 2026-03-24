@@ -4,7 +4,8 @@ const PORT = process.env.PORT || 3000;
 const MAX_PLAYERS = 8;
 const MAX_NAME_LEN = 16;
 const RATE_LIMIT = 10; // max messages per second
-const ROOM_EXPIRE_MS = 30 * 60 * 1000; // 30 min
+const ROOM_EXPIRE_MS = 30 * 60 * 1000; // 30 min (empty rooms)
+const ROOM_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks (absolute max)
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const COLORS = [
   '#5ccfe6', '#f0c674', '#c678dd', '#e06c75',
@@ -58,6 +59,23 @@ function removePlayer(playerId, room, code) {
 setInterval(() => {
   const now = Date.now();
   for (const [code, room] of rooms) {
+    // Sweep stale players (dead WebSocket connections that never fired 'close')
+    for (const [id, player] of room.players) {
+      if (player.ws.readyState !== 1) { // 1 = OPEN
+        removePlayer(id, room, code);
+      }
+    }
+    // Force-close rooms older than 1 week
+    if (now - room.createdAt > ROOM_MAX_AGE_MS) {
+      for (const [id, player] of room.players) {
+        player.ws.send(JSON.stringify({ type: 'room_expired', message: 'This room has been open for over 2 weeks and has expired. Please refresh and create a new room!' }));
+        player.ws.close(1000, 'Room expired');
+      }
+      rooms.delete(code);
+      console.log(`[x] Room ${code} force-expired (age limit)`);
+      continue;
+    }
+    // Remove empty rooms after 30 min
     if (room.players.size === 0 && room.emptyAt && now - room.emptyAt > ROOM_EXPIRE_MS) {
       rooms.delete(code);
       console.log(`[x] Room ${code} expired`);

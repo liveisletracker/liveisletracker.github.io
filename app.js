@@ -10,7 +10,7 @@ const WS_URL = 'wss://live-isle-tracker.fly.dev';
 
 // ── Constants ──
 const MAX_PLAYERS = 8;
-const MAX_TRAIL = 500;
+const MAX_TRAIL = 25;
 const TRAIL_EXPIRE_MS = 20 * 60 * 1000; // 20 minutes
 const WRITE_THROTTLE_MS = 500;
 
@@ -158,6 +158,11 @@ function handleServerMessage(msg) {
 
     case 'error':
       showLobbyError(msg.message);
+      break;
+
+    case 'room_expired':
+      alert(msg.message);
+      leaveRoom();
       break;
 
     case 'player_joined':
@@ -385,6 +390,11 @@ function updateMyPosition(lat, long, alt) {
   renderSidebar();
 }
 
+function clearMyTrail() {
+  const local = players.get(playerId);
+  if (local) local.trail = [];
+}
+
 function updateOCRStatus(status) {
   const dot = document.getElementById('ocr-dot');
   dot.className = 'ocr-dot ' + status;
@@ -400,6 +410,42 @@ function updateOCRStatus(status) {
     statusEl.textContent = 'Waiting for OCR data... Press Tab in-game';
     statusEl.className = 'detecting';
   }
+}
+
+// ── Manual Coordinates ──
+
+function applyManualCoords() {
+  const input = document.getElementById('manual-coords');
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  // Split on comma followed by whitespace (value separator)
+  // Commas within numbers (thousands separators) are NOT followed by spaces
+  const parts = raw.split(/,\s+/);
+  if (parts.length < 2) {
+    input.style.borderColor = '#e06c75';
+    setTimeout(() => input.style.borderColor = '#1a3a4a', 1500);
+    return;
+  }
+
+  const lat = parseFloat(parts[0].replace(/,/g, ''));
+  const long = parseFloat(parts[1].replace(/,/g, ''));
+  const alt = parts[2] ? parseFloat(parts[2].replace(/,/g, '')) : null;
+
+  if (isNaN(lat) || isNaN(long)) {
+    input.style.borderColor = '#e06c75';
+    setTimeout(() => input.style.borderColor = '#1a3a4a', 1500);
+    return;
+  }
+
+  // Update OCR lastCoords so jump filter doesn't reject future OCR reads near this position
+  lastCoords = { lat, long, alt };
+
+  updateMyPosition(lat, long, alt);
+  updateOCRStatus('active');
+
+  input.style.borderColor = '#2a6a3a';
+  setTimeout(() => input.style.borderColor = '#1a3a4a', 1500);
 }
 
 // ── Canvas / Map ──
@@ -849,4 +895,7 @@ document.getElementById('player-name').addEventListener('keydown', e => {
       document.getElementById('room-code-input').focus();
     }
   }
+});
+document.getElementById('manual-coords').addEventListener('keydown', e => {
+  if (e.key === 'Enter') applyManualCoords();
 });
