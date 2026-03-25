@@ -326,8 +326,8 @@ async function ocrLoop() {
         updateOCRStatus('active');
       } else {
         consecutiveRejects++;
-        // After 5 consecutive rejects (~1s at 5Hz), assume legitimate teleport (death/respawn)
-        if (consecutiveRejects >= 5) {
+        // After 3 consecutive rejects (~0.6s at 5Hz), assume legitimate teleport (death/respawn/new server)
+        if (consecutiveRejects >= 3) {
           consecutiveRejects = 0;
           clearMyTrail();
           lastCoords = coords;
