@@ -454,6 +454,21 @@ let mouseOnCanvas = false;
 // Waypoints: playerId → {lat, long} or null
 let waypoints = new Map();
 
+// Subtle click sound for waypoint placement
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playWaypointSound() {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.08);
+  gain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.1);
+}
+
 // ── WebSocket ──
 
 function connectWebSocket() {
@@ -544,6 +559,7 @@ function handleServerMessage(msg) {
     case 'waypoint':
       if (msg.lat != null && msg.long != null) {
         waypoints.set(msg.playerId, { lat: msg.lat, long: msg.long });
+        playWaypointSound();
       } else {
         waypoints.delete(msg.playerId);
       }
