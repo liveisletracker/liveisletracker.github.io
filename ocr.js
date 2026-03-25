@@ -9,6 +9,9 @@ let videoElement = null;
 let captureCanvas = null;
 let captureCtx = null;
 let cropRegion = null;
+let cropRegionBase = null; // Original crop region (for rescaling on resolution change)
+let baseVideoWidth = 0;    // Video width when region was selected
+let baseVideoHeight = 0;   // Video height when region was selected
 let ocrWorker = null;
 let ocrRunning = false;
 let lastCoords = null;
@@ -162,6 +165,11 @@ async function selectRegion() {
       cropRegion.width = Math.min(cropRegion.width, imgW - cropRegion.x);
       cropRegion.height = Math.min(cropRegion.height, imgH - cropRegion.y);
 
+      // Remember base resolution for rescaling if video dims change later
+      cropRegionBase = { ...cropRegion };
+      baseVideoWidth = captureCanvas.width;
+      baseVideoHeight = captureCanvas.height;
+
       cleanup();
       overlay.style.display = 'none';
       resolve(cropRegion);
@@ -204,6 +212,29 @@ async function initOCR() {
 // ── Image Preprocessing (matches server.py pipeline) ──
 
 function preprocessFrame() {
+  const curW = videoElement.videoWidth;
+  const curH = videoElement.videoHeight;
+
+  // Resize canvas & rescale crop region if video resolution changed
+  if (curW !== captureCanvas.width || curH !== captureCanvas.height) {
+    console.warn(`[OCR] Video resolution changed: ${captureCanvas.width}x${captureCanvas.height} → ${curW}x${curH}`);
+    captureCanvas.width = curW;
+    captureCanvas.height = curH;
+    captureCtx = captureCanvas.getContext('2d', { willReadFrequently: true });
+
+    // Rescale crop region from base resolution to current
+    const sx = curW / baseVideoWidth;
+    const sy = curH / baseVideoHeight;
+    cropRegion = {
+      x: Math.max(0, Math.round(cropRegionBase.x * sx)),
+      y: Math.max(0, Math.round(cropRegionBase.y * sy)),
+      width: Math.max(4, Math.round(cropRegionBase.width * sx)),
+      height: Math.max(4, Math.round(cropRegionBase.height * sy)),
+    };
+    cropRegion.width = Math.min(cropRegion.width, curW - cropRegion.x);
+    cropRegion.height = Math.min(cropRegion.height, curH - cropRegion.y);
+  }
+
   // Draw current video frame
   captureCtx.drawImage(videoElement, 0, 0);
 
@@ -366,5 +397,6 @@ function stopOCR() {
   ocrRunning = false;
   stopScreenCapture();
   cropRegion = null;
+  cropRegionBase = null;
   lastCoords = null;
 }
