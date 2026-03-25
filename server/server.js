@@ -87,7 +87,19 @@ setInterval(() => {
 const wss = new WebSocketServer({ port: PORT });
 console.log(`WebSocket relay running on port ${PORT}`);
 
+// ── Heartbeat ── keep connections alive & detect dead clients
+setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) return ws.terminate();
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 60000);
+
 wss.on('connection', (ws) => {
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+
   let playerId = null;
   let roomCode = null;
   let msgCount = 0;
