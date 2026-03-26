@@ -17,6 +17,10 @@ let ocrRunning = false;
 let lastCoords = null;
 let ocrLastSuccess = 0;
 let consecutiveRejects = 0;
+let tmpCanvas = null;   // Reusable preprocessing canvases (avoid per-frame allocation)
+let tmpCtx = null;
+let procCanvas = null;
+let procCtx = null;
 
 // ── Regex (matches server.py patterns) ──
 const LAT_RE = /Lat[:\s]*(-?[\d,]+\.?\d*)/;
@@ -255,20 +259,31 @@ function preprocessFrame() {
     data[i + 3] = 255;
   }
 
-  // Put processed pixels on temp canvas
-  const tmpCanvas = document.createElement('canvas');
-  tmpCanvas.width = cropRegion.width;
-  tmpCanvas.height = cropRegion.height;
-  const tmpCtx = tmpCanvas.getContext('2d');
+  // Put processed pixels on temp canvas (reuse across frames)
+  if (!tmpCanvas) {
+    tmpCanvas = document.createElement('canvas');
+    tmpCtx = tmpCanvas.getContext('2d');
+  }
+  if (tmpCanvas.width !== cropRegion.width || tmpCanvas.height !== cropRegion.height) {
+    tmpCanvas.width = cropRegion.width;
+    tmpCanvas.height = cropRegion.height;
+  }
   tmpCtx.putImageData(imageData, 0, 0);
 
-  // Upscale 2x with nearest neighbor
-  const procCanvas = document.createElement('canvas');
-  procCanvas.width = cropRegion.width * 2;
-  procCanvas.height = cropRegion.height * 2;
-  const procCtx = procCanvas.getContext('2d');
-  procCtx.imageSmoothingEnabled = false;
-  procCtx.drawImage(tmpCanvas, 0, 0, procCanvas.width, procCanvas.height);
+  // Upscale 2x with nearest neighbor (reuse across frames)
+  const needW = cropRegion.width * 2;
+  const needH = cropRegion.height * 2;
+  if (!procCanvas) {
+    procCanvas = document.createElement('canvas');
+    procCtx = procCanvas.getContext('2d');
+    procCtx.imageSmoothingEnabled = false;
+  }
+  if (procCanvas.width !== needW || procCanvas.height !== needH) {
+    procCanvas.width = needW;
+    procCanvas.height = needH;
+    procCtx.imageSmoothingEnabled = false;
+  }
+  procCtx.drawImage(tmpCanvas, 0, 0, needW, needH);
 
   return procCanvas;
 }
@@ -399,4 +414,8 @@ function stopOCR() {
   cropRegion = null;
   cropRegionBase = null;
   lastCoords = null;
+  tmpCanvas = null;
+  tmpCtx = null;
+  procCanvas = null;
+  procCtx = null;
 }
